@@ -84,7 +84,7 @@ public:
     Executers[Ind].Execute(Binded);
   } /* End of 'AddExecuteTask' function */
 
-  constexpr void WaitForExecuting(void) const noexcept
+  constexpr void WaitForExecuting( void ) const noexcept
   {
     bool IsInProgress = true;
 
@@ -97,24 +97,12 @@ public:
     }
   } /* End of 'WaitForExecuting' function */
 
-  /* Wait for all execute tasts to stop function.
-   * ARGUMENTS:
-   *   - thread index:
-   *       Index Ind;
-   * RETURNS:
-   *   (status) thread status.
-   */
-  constexpr status GetThreadExecuteStatus(Index Ind) const noexcept
+  constexpr status GetThreadExecuteStatus( Index Ind ) const noexcept
   {
     return Executers[Ind].second.GetStatus();
   } /* End of 'GetThreadExecuteStatus' function */
 
-  /* Get percentage for executer threads progress function.
-   * ARGUMENTS: None.
-   * RETURNS:
-   *   (std::tuple<float, float, float>) progresses 'done', 'executing' and 'error'.
-   */
-  constexpr std::tuple<float, float, float> GetWorkPercentage(void) const noexcept
+  constexpr std::tuple<float, float, float> GetWorkPercentage( void ) const noexcept
   {
     if (Executers.size() == 0)
       return std::tuple<float, float, float>{};
