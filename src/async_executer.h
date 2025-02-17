@@ -1,5 +1,5 @@
 /*
- * Module for asynchronous command execution
+ * Module for asynchronous commands execution
  */
 
 #ifndef __async_executer_h_
@@ -7,13 +7,18 @@
 
 #include <functional>
 #include <thread>
+#include <atomic>
 #include <map>
 
 /* Async executer class */
 template<typename Index = int>
-class async_exec
+class async_executer
 {
 public:
+  /* Default class constructor */
+  async_executer( void ) = default;
+  async_executer( const async_executer &A ) = delete;
+
   /* Async execution status enum */
   enum class status
   {
@@ -24,21 +29,22 @@ public:
 
 private:
 
+  /* Executing thread class */
   class entry
   {
+    friend class async_executer;
   private:
     // Thread for function executing
     std::thread ExecuteThread{};
 
     // Current thread status
-    status Status = status::AE_STATUS_EXECUTING;
+    std::atomic<status> Status = status::AE_STATUS_EXECUTING;
 
     template<typename Func>
     void Executer( Func FuncPtr )
     {
       try
       {
-        Status = status::AE_STATUS_EXECUTING;
         FuncPtr();
       } catch (...)
       {
@@ -50,17 +56,15 @@ private:
     } /* End of 'Executer' function */
 
   public:
-
     entry( void ) = default;
 
     template<typename Func>
     void Execute( Func FuncPtr )
     {
       ExecuteThread = std::thread(&entry::Executer<Func>, this, FuncPtr);
-      ExecuteThread.detach();
     } /* End of 'Execute' function */
 
-    constexpr status GetStatus( void ) const noexcept
+    status GetStatus( void ) const noexcept
     {
       return Status;
     } /* End of 'GetStatus' function */
@@ -78,13 +82,10 @@ public:
     if (Executers.find(Ind) != Executers.end())
       return;
 
-    auto Binded = std::bind(FuncPtr, Argts...);
-
-    Executers[Ind] = entry();
-    Executers[Ind].Execute(Binded);
+    Executers[Ind].Execute(std::bind(FuncPtr, Argts...));
   } /* End of 'AddExecuteTask' function */
 
-  constexpr void WaitForExecuting( void ) const noexcept
+  void WaitForExecuting( void ) noexcept
   {
     bool IsInProgress = true;
 
@@ -95,14 +96,25 @@ public:
         if (Exe.second.GetStatus() == status::AE_STATUS_EXECUTING)
           IsInProgress = true;
     }
+
+    for (auto &exec : Executers)
+      if (exec.second.ExecuteThread.joinable())
+        exec.second.ExecuteThread.join();
+
+    Executers.clear();
   } /* End of 'WaitForExecuting' function */
 
-  constexpr status GetThreadExecuteStatus( Index Ind ) const noexcept
+  status GetThreadStatus( Index Ind ) const noexcept
   {
     return Executers[Ind].second.GetStatus();
-  } /* End of 'GetThreadExecuteStatus' function */
+  } /* End of 'GetThreadStatus' function */
 
-  constexpr std::tuple<float, float, float> GetWorkPercentage( void ) const noexcept
+  /* Returns 3 parameters: percentage of
+   * 0) Done threads
+   * 1) Executing threads
+   * 2) Error threads
+   */
+  std::tuple<float, float, float> GetPercentage( void ) const noexcept
   {
     if (Executers.size() == 0)
       return std::tuple<float, float, float>{};
@@ -114,11 +126,11 @@ public:
     return std::tuple<float, float, float>
     {
       DoneExecError[0] / All,
-        DoneExecError[1] / All,
-        DoneExecError[2] / All
+      DoneExecError[1] / All,
+      DoneExecError[2] / All
     };
-  } /* End of 'GetWorkPercentage' function */
+  } /* End of 'GetPercentage' function */
 
-}; /* End of 'async_exec' class */
+}; /* End of 'async_executer' class */
 
 #endif /* __async_executer_h_ */
